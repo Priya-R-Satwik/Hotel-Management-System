@@ -1,0 +1,20 @@
+.container {  display: grid;
+  grid-template-columns: 0.8fr 1.8fr 0.4fr;
+  grid-template-rows: 0.3fr 0.5fr 2.2fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "Header Header Header"
+    "Navbar Stats Stats"
+    "Navbar Content Margin";
+}
+
+.Header { grid-area: Header; }
+
+.Navbar { grid-area: Navbar; }
+
+.Stats { grid-area: Stats; }
+
+.Content { grid-area: Content; }
+
+.Margin { grid-area: Margin; }
