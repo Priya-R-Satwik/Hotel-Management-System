@@ -13,10 +13,39 @@
               <div class="row">
                 <div class="col-8">
                   <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Today's sales</p>
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Today's Money</p>
                     <h5 class="font-weight-bolder">
-                      ₹ 2,300
+                      $53,000
                     </h5>
+                    <p class="mb-0">
+                      <span class="text-success text-sm font-weight-bolder">+55%</span>
+                      since yesterday
+                    </p>
+                  </div>
+                </div>
+                <div class="col-4 text-end">
+                  <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
+                    <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="row">
+                <div class="col-8">
+                  <div class="numbers">
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Today's Users</p>
+                    <h5 class="font-weight-bolder">
+                      2,300
+                    </h5>
+                    <p class="mb-0">
+                      <span class="text-success text-sm font-weight-bolder">+3%</span>
+                      since last week
+                    </p>
                   </div>
                 </div>
                 <div class="col-4 text-end">
@@ -34,10 +63,14 @@
               <div class="row">
                 <div class="col-8">
                   <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Last transactions</p>
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">New Clients</p>
                     <h5 class="font-weight-bolder">
-                      ₹ 3,462
+                      +3,462
                     </h5>
+                    <p class="mb-0">
+                      <span class="text-danger text-sm font-weight-bolder">-2%</span>
+                      Last quarter
+                    </p>
                   </div>
                 </div>
                 <div class="col-4 text-end">
@@ -49,16 +82,19 @@
             </div>
           </div>
         </div>
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+        <div class="col-xl-3 col-sm-6">
           <div class="card">
             <div class="card-body p-3">
               <div class="row">
                 <div class="col-8">
                   <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">No. of transactions</p>
+                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Sales</p>
                     <h5 class="font-weight-bolder">
-                      10
+                      $103,430
                     </h5>
+                    <p class="mb-0">
+                      <span class="text-success text-sm font-weight-bolder">+5%</span> than last month
+                    </p>
                   </div>
                 </div>
                 <div class="col-4 text-end">
@@ -70,27 +106,7 @@
             </div>
           </div>
         </div>
-        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
-          <div class="card">
-            <div class="card-body p-3">
-              <div class="row">
-                <div class="col-8">
-                  <div class="numbers">
-                    <p class="text-sm mb-0 text-uppercase font-weight-bold">Monthly sales</p>
-                    <h5 class="font-weight-bolder">
-                      ₹ 53,000
-                    </h5>
-                  </div>
-                </div>
-                <div class="col-4 text-end">
-                  <div class="icon icon-shape bg-gradient-primary shadow-primary text-center rounded-circle">
-                    <i class="ni ni-money-coins text-lg opacity-10" aria-hidden="true"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
           <div class="row">
             <div class="col-md-7 mt-4">
               <div class="card">
@@ -100,48 +116,72 @@
                       <h6 class="mb-0">Tables active</h6>
                     </div>
                     <div class="col-6 text-end">
-                      <a class="btn bg-gradient-dark mb-0" href="javascript:;"><i class="fas fa-plus"></i>&nbsp;&nbsp;New table</a>
+                    <button type="button" class="btn bg-gradient-dark mb-0" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                      <i class="fas fa-plus"></i>&nbsp;&nbsp;New table
+                    </button>
                     </div>
+                      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="exampleModalLabel">Add table</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                                <form action="/add_table" method="POST">
+                              <div class="modal-body">
+                                  <div class="row">
+                                    <div class="col-md-12">
+                                      <div class="form-group">
+                                        <label for="example-text-input" class="form-control-label">Name</label>
+                                        <input class="form-control" type="text" placeholder="Table Name" name="name">
+                                      </div>
+                                    </div>
+                                  </div>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save changes</button>
+                              </div>
+                                </form>
+                            </div>
+                          </div>
+                        </div>
                   </div>
                 </div>
                 <div class="card-body pt-4 p-3">
+                <h6 class="text-uppercase text-body text-xs font-weight-bolder my-3">Occupied tables</h6>
                   <ul class="list-group">
+                      {% for table in data['tables_occupied'] %}
                     <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
                       <div class="d-flex flex-column">
-                        <h6 class="mb-3 text-sm">Oliver Liam</h6>
-                        <span class="mb-2 text-xs">Company Name: <span class="text-dark font-weight-bold ms-sm-2">Viking Burrito</span></span>
-                        <span class="mb-2 text-xs">Email Address: <span class="text-dark ms-sm-2 font-weight-bold">oliver@burrito.com</span></span>
-                        <span class="text-xs">VAT Number: <span class="text-dark ms-sm-2 font-weight-bold">FRB1235476</span></span>
+                        <h6 class="mb-3 text-sm">{{ table.name }}</h6>
+                          <span class="badge badge-sm bg-gradient-success">Unoccupied</span>
+                        <span class="mb-2 text-xs">Hosted by: <span class="text-dark font-weight-bold ms-sm-2">{{ table.user }}</span></span>
+                        <span class="mb-2 text-xs">Order id: <span class="text-dark ms-sm-2 font-weight-bold">{{ table.order_id }}</span></span>
                       </div>
                       <div class="ms-auto text-end">
-                        <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="javascript:;"><i class="far fa-trash-alt me-2"></i>Delete</a>
+                        <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="/delete_table/{{ table.table_id }}"><i class="far fa-trash-alt me-2"></i>Delete</a>
                         <a class="btn btn-link text-dark px-3 mb-0" href="javascript:;"><i class="fas fa-pencil-alt text-dark me-2" aria-hidden="true"></i>Edit</a>
                       </div>
                     </li>
-                    <li class="list-group-item border-0 d-flex p-4 mb-2 mt-3 bg-gray-100 border-radius-lg">
+                     {% endfor %}
+                  </ul>
+                <hr>
+                <h6 class="text-uppercase text-body text-xs font-weight-bolder my-3">Unoccupied tables</h6>
+                  <ul class="list-group">
+                      {% for table in data['tables_unoccupied'] %}
+                    <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
                       <div class="d-flex flex-column">
-                        <h6 class="mb-3 text-sm">Lucas Harper</h6>
-                        <span class="mb-2 text-xs">Company Name: <span class="text-dark font-weight-bold ms-sm-2">Stone Tech Zone</span></span>
-                        <span class="mb-2 text-xs">Email Address: <span class="text-dark ms-sm-2 font-weight-bold">lucas@stone-tech.com</span></span>
-                        <span class="text-xs">VAT Number: <span class="text-dark ms-sm-2 font-weight-bold">FRB1235476</span></span>
+                        <h6 class="mb-3 text-sm">{{ table.name }}</h6>
+                          <span class="badge badge-sm bg-gradient-secondary">Unoccupied</span>
+                        <span class="mb-2 text-xs">Hosted by: <span class="text-dark font-weight-bold ms-sm-2">{{ table.user }}</span></span>
+                        <span class="mb-2 text-xs">Order id: <span class="text-dark ms-sm-2 font-weight-bold">{{ table.order_id }}</span></span>
                       </div>
                       <div class="ms-auto text-end">
-                        <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="javascript:;"><i class="far fa-trash-alt me-2"></i>Delete</a>
-                        <a class="btn btn-link text-dark px-3 mb-0" href="javascript:;"><i class="fas fa-pencil-alt text-dark me-2" aria-hidden="true"></i>Edit</a>
+                        <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="/delete_table/{{ table.table_id }}"><i class="far fa-trash-alt me-2"></i>Delete</a>
                       </div>
                     </li>
-                    <li class="list-group-item border-0 d-flex p-4 mb-2 mt-3 bg-gray-100 border-radius-lg">
-                      <div class="d-flex flex-column">
-                        <h6 class="mb-3 text-sm">Ethan James</h6>
-                        <span class="mb-2 text-xs">Company Name: <span class="text-dark font-weight-bold ms-sm-2">Fiber Notion</span></span>
-                        <span class="mb-2 text-xs">Email Address: <span class="text-dark ms-sm-2 font-weight-bold">ethan@fiber.com</span></span>
-                        <span class="text-xs">VAT Number: <span class="text-dark ms-sm-2 font-weight-bold">FRB1235476</span></span>
-                      </div>
-                      <div class="ms-auto text-end">
-                        <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="javascript:;"><i class="far fa-trash-alt me-2"></i>Delete</a>
-                        <a class="btn btn-link text-dark px-3 mb-0" href="javascript:;"><i class="fas fa-pencil-alt text-dark me-2" aria-hidden="true"></i>Edit</a>
-                      </div>
-                    </li>
+                     {% endfor %}
                   </ul>
                 </div>
               </div>

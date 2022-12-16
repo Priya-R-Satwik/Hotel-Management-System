@@ -5,6 +5,8 @@ from flask_bcrypt import Bcrypt
 from datetime import datetime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+import random, string
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -16,6 +18,7 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 
 @login_manager.user_loader
 def user_loader(id):
@@ -61,10 +64,10 @@ class user_details(db.Model, UserMixin):
 
 class items(db.Model):
     item_id = db.Column(db.String(80), primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
-    rate = db.Column(db.String(80), unique=True, nullable=False)
-    category = db.Column(db.String(120), unique=True, nullable=False)
-    sales = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(80), nullable=False)
+    rate = db.Column(db.String(80), nullable=False)
+    category = db.Column(db.String(120))
+    sales = db.Column(db.String(120), nullable=False)
 
     def __repr__(self):
         return '<Item %r>' % self.name
@@ -118,33 +121,38 @@ class invoices(db.Model):
 
 
 class tables(db.Model):
-    table_id = db.Column(db.String(80), primary_key=True)
-    status = db.Column(db.String(80), unique=True, nullable=False)
-    user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
-    order_id = db.Column(db.String(80), db.ForeignKey('orders.order_id'), nullable=False)
+    table_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    status = db.Column(db.String(80), nullable=False)
+    user = db.Column(db.String(120), db.ForeignKey('user_details.id'))
+    order_id = db.Column(db.String(80))
 
     def __repr__(self):
-        return '<Table %r>' % self.id
+        return '<Table %r>' % self.table_id
 
-    def __init__(self, status, user):
+    def __init__(self, name, status, user, order_id):
+        self.name = name
         self.status = status
         self.user = user
+        self.order_id = order_id
 
     def serialize(self):
         return {
-            "id": self.id,
+            "id": self.table_id,
+            "name": self.name,
             "status": self.status,
-            "user": self.user
+            "user": self.user,
+            "order_id": self.order_id
         }
 
 
 class orders(db.Model):
     order_id = db.Column(db.String(80), primary_key=True)
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
-    quantity = db.Column(db.String(80), unique=True, nullable=False)
-    total = db.Column(db.String(120), unique=True, nullable=False)
-    date = db.Column(db.String(120), unique=True, nullable=False)
-    table_no = db.Column(db.String(120), unique=True, nullable=False)
+    quantity = db.Column(db.String(80), nullable=False)
+    total = db.Column(db.String(120), nullable=False)
+    date = db.Column(db.String(120), nullable=False)
+    table_no = db.Column(db.String(120), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
 
     def __repr__(self):
@@ -173,9 +181,9 @@ class orders(db.Model):
 class archives(db.Model):
     invoice_id = db.Column(db.String(80), primary_key=True)
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
-    quantity = db.Column(db.String(80), unique=True, nullable=False)
-    total = db.Column(db.String(120), unique=True, nullable=False)
-    date = db.Column(db.String(120), unique=True, nullable=False)
+    quantity = db.Column(db.String(80), nullable=False)
+    total = db.Column(db.String(120), nullable=False)
+    date = db.Column(db.String(120), nullable=False)
     table_no = db.Column(db.String(120), db.ForeignKey('tables.table_id'), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
 
@@ -202,11 +210,16 @@ class archives(db.Model):
         }
 
 
-@app.route('/', methods=['GET','POST'])
+@app.route('/')
+def index():
+    return redirect(url_for('login'))
+
+
+@app.route('/login', methods=['GET','POST'])
 def login():
     # Login with flask_login
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].lower().strip()
         password = request.form['password']
         user = user_details.query.filter_by(username=username).first()
         if user:
@@ -240,7 +253,7 @@ def register():
         name = args.get('name')
         surname = args.get('surname')
         username = args.get('username')
-        email = ""
+        email = args.get('email')
         password = args.get('password')
         confirm_password = args.get('confirm_password')
         phone = ""
@@ -255,11 +268,98 @@ def register():
         return render_template('register.html')
     return render_template('register.html')
 
+class admin:
+    @app.route('/admin_dashboard')
+    @login_required
+    def admin_dashboard():
+        if current_user.role == '0':
+            tables_occupied = tables.query.filter_by(status=1).all()
+            tables_unoccupied = tables.query.filter_by(status=0).all()
+            data = {
+                'tables_occupied': tables_occupied,
+                'tables_unoccupied': tables_unoccupied
+            }
+            return render_template('admin_dashboard.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
 
-@app.route('/admin_dashboard')
-@login_required
-def admin_dashboard():
-    return render_template('admin_dashboard.html')
+
+    @app.route('/add_table', methods=['POST'])
+    @login_required
+    def add_table():
+        if current_user.role == '0':
+            args = request.form
+            name = args.get('name')
+            status = 0
+            user = None
+            order_id = None
+            table = tables(name, status, user, order_id)
+            db.session.add(table)
+            db.session.commit()
+            flash('New table created successfully')
+            return redirect(url_for('admin_dashboard'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
+
+    @app.route('/delete_table/<table_id>', methods=['GET'])
+    @login_required
+    def delete_table(table_id):
+        if current_user.role == '0':
+            table = tables.query.filter_by(table_id=table_id).first()
+            db.session.delete(table)
+            db.session.commit()
+            flash('Table deleted successfully')
+            return redirect(url_for('admin_dashboard'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
+
+class owner:
+    @app.route('/activate_table/<table_id>', methods=['GET'])
+    @login_required
+    def activate_table(table_id):
+        if current_user.role == '1':
+            table = tables.query.filter_by(table_id=table_id).first()
+            table.status = 1
+            table.order_id = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+            table.user = current_user.id
+            db.session.commit()
+            flash('{} activated successfully'.format(table.name))
+            return redirect(url_for('owner_dashboard'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
+
+    @app.route('/owner_dashboard')
+    @login_required
+    def owner_dashboard():
+        if current_user.role == '1':
+            tables_occupied = tables.query.filter_by(status=1).all()
+            tables_unoccupied = tables.query.filter_by(status=0).all()
+            data = {
+                'tables_occupied': [tables_occupied, len(tables_occupied)],
+                'tables_unoccupied': [tables_unoccupied, len(tables_unoccupied)]
+            }
+            return render_template('owner_dashboard.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
+    @app.route('/order/<order_id>', methods=['GET','POST'])
+    @login_required
+    def order(order_id):
+        if current_user.role == '1':
+            if request.method == 'GET':
+                table = tables.query.filter_by(order_id=order_id).first()
+                order = orders.query.filter_by(order_id=order_id).all()
+                data = {
+                    'order_id': order_id,
+                    'table': table,
+                    'order': [order, len(order)]
+                }
+                return render_template('order.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
 
 
 @app.route('/logout')
