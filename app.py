@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.sql import func
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from flask_bcrypt import Bcrypt
 from datetime import datetime
@@ -63,7 +64,7 @@ class user_details(db.Model, UserMixin):
 
 
 class items(db.Model):
-    item_id = db.Column(db.String(80), primary_key=True)
+    item_id = db.Column(db.Integer, unique=True, nullable=False, autoincrement=True, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     rate = db.Column(db.String(80), nullable=False)
     category = db.Column(db.String(120))
@@ -89,18 +90,20 @@ class items(db.Model):
 
 
 class invoices(db.Model):
-    invoice_id = db.Column(db.String(80), primary_key=True)
+    id = db.Column(db.Integer, unique=True, nullable=False, primary_key=True, autoincrement=True)
+    invoice_id = db.Column(db.String(80), nullable=False)
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
-    quantity = db.Column(db.String(80), unique=True, nullable=False)
-    total = db.Column(db.String(120), unique=True, nullable=False)
-    date = db.Column(db.String(120), unique=True, nullable=False)
-    table_no = db.Column(db.String(120), unique=True, nullable=False)
+    quantity = db.Column(db.String(80), nullable=False)
+    total = db.Column(db.String(120), nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    table_no = db.Column(db.String(120), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
 
     def __repr__(self):
         return '<Invoice %r>' % self.id
 
-    def __init__(self, item, quantity, total, date, table_no, user):
+    def __init__(self, invoice_id, item, quantity, total, date, table_no, user):
+        self.invoice_id = invoice_id
         self.item = item
         self.quantity = quantity
         self.total = total
@@ -147,22 +150,23 @@ class tables(db.Model):
 
 
 class orders(db.Model):
-    order_id = db.Column(db.String(80), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(80))
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
     quantity = db.Column(db.String(80), nullable=False)
     total = db.Column(db.String(120), nullable=False)
-    date = db.Column(db.String(120), nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
     table_no = db.Column(db.String(120), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
 
     def __repr__(self):
         return '<Order %r>' % self.id
 
-    def __init__(self, item, quantity, total, date, table_no, user):
+    def __init__(self, order_id, item, quantity, total, table_no, user):
+        self.order_id = order_id
         self.item = item
         self.quantity = quantity
         self.total = total
-        self.date = date
         self.table_no = table_no
         self.user = user
 
@@ -183,7 +187,7 @@ class archives(db.Model):
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
     quantity = db.Column(db.String(80), nullable=False)
     total = db.Column(db.String(120), nullable=False)
-    date = db.Column(db.String(120), nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
     table_no = db.Column(db.String(120), db.ForeignKey('tables.table_id'), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
 
@@ -208,6 +212,47 @@ class archives(db.Model):
             "table_no": self.table_no,
             "user": self.user
         }
+
+class chef_orders(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(80))
+    item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
+    quantity = db.Column(db.String(80), nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    table_no = db.Column(db.String(120), nullable=False)
+    user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
+
+    def __repr__(self):
+        return '<Order %r>' % self.id
+
+    def __init__(self, order_id, item, quantity, table_no, user):
+        self.order_id = order_id
+        self.item = item
+        self.quantity = quantity
+        self.table_no = table_no
+        self.user = user
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "item": self.item,
+            "quantity": self.quantity,
+            "date": self.date,
+            "table_no": self.table_no,
+            "user": self.user
+        }
+
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    if current_user.role == '0':
+        return redirect(url_for('admin_dashboard'))
+    elif current_user.role == '1':
+        return redirect(url_for('owner_dashboard'))
+    elif current_user.role == '2':
+        return redirect(url_for('waiter_dashboard'))
+    elif current_user.role == '3':
+        return redirect(url_for('chef_dashboard'))
+
 
 
 @app.route('/')
@@ -244,6 +289,8 @@ def authenticate():
         return redirect(url_for('waiter_dashboard'))
     elif current_user.role == '3':
         return redirect(url_for('chef_dashboard'))
+    else:
+        return redirect(url_for('login'))
 
 
 @app.route('/register', methods=['GET','POST'])
@@ -258,13 +305,14 @@ def register():
         confirm_password = args.get('confirm_password')
         phone = ""
         role = args.get('role')
-        if password == confirm_password:
+        user = user_details.query.filter_by(username=username).first()
+        if password == confirm_password and user is None:
             user = user_details(name, surname, username, email, generate_password_hash(password), phone, role)
             db.session.add(user)
             db.session.commit()
             flash('New user created successfully')
             return redirect(url_for('login'))
-        flash('Passwords do not match')
+        flash('Invalid credentials')
         return render_template('register.html')
     return render_template('register.html')
 
@@ -273,11 +321,21 @@ class admin:
     @login_required
     def admin_dashboard():
         if current_user.role == '0':
-            tables_occupied = tables.query.filter_by(status=1).all()
+            date_time = datetime.now()
+            date = date_time.strftime("%Y-%m-%d")
+            invoices_data = {}
+            unique_invoices = invoices.query.with_entities(invoices.invoice_id).distinct().all()
+            for invoice in unique_invoices:
+                invoices_data[invoice.invoice_id] = {}
+                invoices_data[invoice.invoice_id]['total'] = sum([int(i.total) for i in invoices.query.filter_by(invoice_id=invoice.invoice_id).all()])
+                invoices_data[invoice.invoice_id]['date'] = invoices.query.filter_by(invoice_id=invoice.invoice_id).first().date.strftime("%Y-%m-%d %H:%M:%S")
+            tables_occupied = db.session.query(tables, user_details).filter(tables.status == '1').join(user_details, tables.user == user_details.id).add_columns(tables.name, tables.table_id, tables.status, user_details.name, user_details.surname, tables.order_id).all()
             tables_unoccupied = tables.query.filter_by(status=0).all()
             data = {
-                'tables_occupied': tables_occupied,
-                'tables_unoccupied': tables_unoccupied
+                'tables_occupied': [tables_occupied, len(tables_occupied)],
+                'tables_unoccupied': [tables_unoccupied, len(tables_unoccupied)],
+                'date': str(date).split()[0],
+                'invoices': invoices_data
             }
             return render_template('admin_dashboard.html', data=data)
         flash('You are not authorized to view this page')
@@ -293,11 +351,14 @@ class admin:
             status = 0
             user = None
             order_id = None
-            table = tables(name, status, user, order_id)
-            db.session.add(table)
-            db.session.commit()
-            flash('New table created successfully')
-            return redirect(url_for('admin_dashboard'))
+            try:
+                table = tables(name, status, user, order_id)
+                db.session.add(table)
+                db.session.commit()
+                flash('Table added successfully')
+            except:
+                flash('Table already exists')
+            return redirect(url_for('dashboard'))
         flash('You are not authorized to view this page')
         return redirect(url_for('logout'))
 
@@ -311,7 +372,7 @@ class admin:
             db.session.commit()
             flash('Table deleted successfully')
             return redirect(url_for('admin_dashboard'))
-        flash('You are not authorized to view this page')
+        flash('You are not authorized to delete an item')
         return redirect(url_for('logout'))
 
 
@@ -319,16 +380,16 @@ class owner:
     @app.route('/activate_table/<table_id>', methods=['GET'])
     @login_required
     def activate_table(table_id):
-        if current_user.role == '1':
+        if current_user.role in ['1','2']:
             table = tables.query.filter_by(table_id=table_id).first()
             table.status = 1
             table.order_id = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
             table.user = current_user.id
             db.session.commit()
             flash('{} activated successfully'.format(table.name))
-            return redirect(url_for('owner_dashboard'))
+            return redirect(url_for('dashboard'))
         flash('You are not authorized to view this page')
-        return redirect(url_for('logout'))
+        return redirect(url_for('dashboard'))
 
 
     @app.route('/owner_dashboard')
@@ -348,18 +409,305 @@ class owner:
     @app.route('/order/<order_id>', methods=['GET','POST'])
     @login_required
     def order(order_id):
-        if current_user.role == '1':
+        if current_user.role in ['1','2']:
             if request.method == 'GET':
                 table = tables.query.filter_by(order_id=order_id).first()
-                order = orders.query.filter_by(order_id=order_id).all()
+                order = orders.query.filter_by(order_id=order_id).join(items, orders.item == items.item_id).add_columns(orders.id, items.name, items.rate, orders.quantity, orders.total).all()
+                items_list = items.query.all()
+                total_amount = orders.query.filter_by(order_id=order_id).with_entities(func.sum(orders.total)).scalar()
                 data = {
                     'order_id': order_id,
                     'table': table,
-                    'order': [order, len(order)]
+                    'order': [order, len(order)],
+                    'items_list': items_list,
+                    'total_amount': 0 if total_amount == None else total_amount
                 }
                 return render_template('order.html', data=data)
         flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+
+    @app.route('/order/<order_id>/add_item', methods=['POST'])
+    @login_required
+    def add_item(order_id):
+        if current_user.role in ['1','2']:
+            if request.method == 'POST':
+                args = request.form
+                item = args.get('item_id')
+                quantity = int(args.get('quantity'))
+                rate = int(items.query.filter_by(item_id=item).first().rate)
+                fetch = orders.query.filter_by(order_id=order_id, item=args.get('item_id')).first()
+                table_no = tables.query.filter_by(order_id=order_id).first().table_id
+                data_to_chef = chef_orders(order_id, item, quantity, table_no, current_user.id)
+                if fetch:
+                    fetch.quantity = int(fetch.quantity) + int(quantity)
+                    fetch.total = int(fetch.quantity) * rate
+                else:
+                    order_id = order_id
+                    total = rate * quantity
+                    user = current_user.id
+                    order = orders(order_id, item, quantity, total, table_no, user)
+                    db.session.add(order)
+                db.session.add(data_to_chef)
+                db.session.commit()
+                flash('Item added successfully')
+                return redirect(url_for('order', order_id=order_id))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+
+    @app.route('/order/<order_id>/print', methods=['GET'])
+    @login_required
+    def print_bill(order_id):
+        if current_user.role in ['1','2']:
+            if request.method == 'GET':
+                table = tables.query.filter_by(order_id=order_id).first()
+                order = orders.query.filter_by(order_id=order_id).join(items, orders.item == items.item_id).add_columns(orders.id, items.name, items.rate, orders.quantity, orders.total).all()
+                total_amount = orders.query.filter_by(order_id=order_id).with_entities(func.sum(orders.total)).scalar()
+                data = {
+                    'order_id': order_id,
+                    'table': table,
+                    'order': [order, len(order)],
+                    'total_amount': 0 if not total_amount else total_amount
+                }
+                return render_template('test.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+
+    @app.route('/order/<order_id>/delete_item/<order_item_id>', methods=['GET'])
+    @login_required
+    def delete_item(order_id, order_item_id):
+        if current_user.role in ['1','2']:
+            order = orders.query.filter_by(id=order_item_id).first()
+            db.session.delete(order)
+            chef_order = chef_orders.query.filter_by(order_id=order_id, item=order.item).all()
+            for i in chef_order:
+                db.session.delete(i)
+            db.session.commit()
+            flash('Item deleted successfully')
+            return redirect(url_for('order', order_id=order_id))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+    @app.route('/order/<order_id>/add_quantity/<order_item_id>', methods=['GET'])
+    @login_required
+    def add_quantity(order_id, order_item_id):
+        if current_user.role in ['1','2']:
+            order = orders.query.filter_by(id=order_item_id).first()
+            order.quantity = int(order.quantity) + 1
+            order.total = int(order.total) + int(items.query.filter_by(item_id=order.item).first().rate)
+            chef = chef_orders(order_id, order.item, 1, order.table_no, current_user.id)
+            db.session.add(chef)
+            db.session.commit()
+            flash('Quantity added successfully')
+            return redirect(url_for('order', order_id=order_id))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+    @app.route('/order/<order_id>/subtract_quantity/<order_item_id>', methods=['GET'])
+    @login_required
+    def subtract_quantity(order_id, order_item_id):
+        if current_user.role in ['1','2']:
+            if request.method == 'GET':
+                order = orders.query.filter_by(id=order_item_id).first()
+                if int(order.quantity) > 1:
+                    order.quantity = int(order.quantity) - 1
+                    order.total = int(order.total) - int(items.query.filter_by(item_id=order.item).first().rate)
+                    chef = chef_orders.query.filter_by(order_id=order_id, item=order.item).all()
+                    if int(chef[-1].quantity) > 1:
+                        chef[-1].quantity = int(chef[-1].quantity) - 1
+                    else:
+                        db.session.delete(chef[-1])
+                    db.session.commit()
+                    flash('Quantity subtracted successfully')
+                    return redirect(url_for('order', order_id=order_id))
+                else:
+                    flash('Quantity cannot be less than 1')
+                    return redirect(url_for('order', order_id=order_id))
+            flash('Quantity added successfully')
+            return redirect(url_for('order', order_id=order_id))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+
+    @app.route('/order/<order_id>/delete_order', methods=['GET'])
+    @login_required
+    def delete_order(order_id):
+        if current_user.role in ['1','2']:
+            order = orders.query.filter_by(order_id=order_id).all()
+            for i in order:
+                db.session.delete(i)
+            table = tables.query.filter_by(order_id=order_id).first()
+            table.status = 0
+            table.order_id = None
+            table.user = None
+            chef = chef_orders.query.filter_by(order_id=order_id).all()
+            for i in chef:
+                db.session.delete(i)
+            db.session.commit()
+            flash('Order deleted successfully')
+            return redirect(url_for('dashboard'))
+        flash('You are not authorized to perform this action')
+        return redirect(url_for('order', order_id=order_id))
+
+
+    @app.route('/order/<order_id>/confirm', methods=['GET'])
+    @login_required
+    def confirm_order(order_id):
+        if current_user.role == '1':
+            order = orders.query.filter_by(order_id=order_id).all()
+            invoice_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=15))
+            for i in order:
+                invoice = invoices(
+                    invoice_id=invoice_id,
+                    item = i.item,
+                    quantity = i.quantity,
+                    total = i.total,
+                    date = i.date,
+                    table_no = i.table_no,
+                    user = i.user
+                )
+                db.session.add(invoice)
+            table = tables.query.filter_by(order_id=order_id).first()
+            table.status = 0
+            table.order_id = None
+            table.user = None
+            for i in order:
+                db.session.delete(i)
+            chef = chef_orders.query.filter_by(order_id=order_id).all()
+            for i in chef:
+                db.session.delete(i)
+            db.session.commit()
+            flash('Order confirmed successfully')
+            return redirect(url_for('owner_dashboard'))
+        flash('You are not authorized to view this page')
         return redirect(url_for('logout'))
+
+    @app.route('/archive_item', methods=['GET'])
+    @login_required
+    def archives():
+        if current_user.role in ['0','1']:
+            invoice_ids = invoices.query.with_entities(invoices.invoice_id).distinct().order_by(invoices.invoice_id.desc()).all()
+            invoice_data = {}
+            for i in invoice_ids:
+                invoice = invoices.query.filter_by(invoice_id=i[0]).all()
+                date = str(invoice[0].date).split()
+                total_amount = invoices.query.filter_by(invoice_id=i[0]).with_entities(func.sum(invoices.total)).first()[0]
+                host = user_details.query.filter_by(id=invoice[0].user).first()
+                invoice_data[i[0]] = [date, total_amount, host.name + ' ' + host.surname, invoice[0].table_no]
+                for j in invoice:
+                    host = tables.query.filter_by(table_id=j.table_no).first()
+                    invoice_data[i[0]].append({
+                        'item': items.query.filter_by(item_id=j.item).first().name,
+                        'quantity': j.quantity,
+                        'table_no': j.table_no,
+                    })
+            return render_template('archives.html', data=invoice_data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('dashboard'))
+
+    @app.route('/items', methods=['GET'])
+    @login_required
+    def owner_items():
+        items_list = items.query.all()
+        data = {
+            'items_list': items_list
+        }
+        return render_template('items.html', data=data)
+
+    @app.route('/items/update/<item_id>', methods=['GET', 'POST'])
+    @login_required
+    def update_items(item_id):
+        if current_user.role == '0':
+            if request.method == 'POST':
+                name = request.form.get('item')
+                rate = request.form.get('rate')
+                item = items.query.filter_by(item_id=item_id).first()
+                item.name = name
+                item.rate = rate
+                db.session.commit()
+                flash('Item updated successfully')
+                flash('Item updated successfully')
+                return redirect(url_for('owner_items'))
+            flash('Item updated successfully')
+            return redirect(url_for('owner_items'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('owner_items'))
+
+
+    @app.route('/items/delete/<item_id>', methods=['GET'])
+    @login_required
+    def delete_items(item_id):
+        if current_user.role == '0':
+            item = items.query.filter_by(item_id=item_id).first()
+            db.session.delete(item)
+            db.session.commit()
+            flash('Item deleted successfully')
+            return redirect(url_for('owner_items'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('owner_items'))
+
+
+    @app.route('/items/add', methods=['GET', 'POST'])
+    @login_required
+    def add_items():
+        if current_user.role == '0':
+            if request.method == 'POST':
+                name = request.form.get('item')
+                rate = request.form.get('rate')
+                item = items(
+                    name=name,
+                    rate=rate,
+                    category=None,
+                    sales=0
+                )
+                db.session.add(item)
+                db.session.commit()
+                flash('Item added successfully')
+                return redirect(url_for('owner_items'))
+            flash('Item added successfully')
+            return redirect(url_for('owner_items'))
+        flash('You are not authorized to view this page')
+        return redirect(url_for('owner_items'))
+
+
+@app.route('/summary', methods=['GET'])
+@login_required
+def summary():
+    flash('Still under construction')
+    return redirect(url_for('dashboard'))
+
+class waiter:
+
+        @app.route('/waiter', methods=['GET'])
+        @login_required
+        def waiter_dashboard():
+            if current_user.role == '2':
+                tables_occupied = tables.query.filter_by(status=1).all()
+                tables_unoccupied = tables.query.filter_by(status=0).all()
+                data = {
+                    'tables_occupied': [tables_occupied, len(tables_occupied)],
+                    'tables_unoccupied': [tables_unoccupied, len(tables_unoccupied)]
+                }
+                return render_template('owner_dashboard.html', data=data)
+            flash('You are not authorized to view this page')
+            return redirect(url_for('logout'))
+
+class chef:
+
+    @app.route('/chef_dashboard', methods=['GET'])
+    @login_required
+    def chef_dashboard():
+        if current_user.role == '3':
+            chef = chef_orders.query.join(items, chef_orders.item == items.item_id).add_columns(items.name, chef_orders.quantity, chef_orders.order_id, chef_orders.table_no).all()
+            data = {
+                'chef': chef
+            }
+            return render_template('chef_dashboard.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
 
 
 @app.route('/logout')
