@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print Preview - {{ data['order_id'] }}</title>
+</head>
+<body style="padding: 10px 10px 10px">
+<section class="text-gray-600 body-font">
+  <div class="container px-5 py-24 mx-auto">
+    <div class="flex flex-col text-center w-full mb-20" style="font-size: x-small; font-family: Arial; text-align: center; justify-content: center;">
+      <h1 class="sm:text-3xl text-2xl font-medium title-font mb-4 text-gray-900">Hotel V2</h1>
+      <p class="lg:w-2/3 mx-auto leading-relaxed text-base">Pure Veg Restaurant<br>Chillarge Farm, Ring Road, Udgir<br>
+      Mobile: 9494526060, 9421995858<br>GSTIN: 27AIQPC0094E2ZD</p>
+    </div>
+  <div style="font-size: x-small; font-family: Arial; margin-left: auto; margin-right: 0;">
+    <hr>
+        <p class="lg:w-2/3 mx-auto leading-relaxed text-base">
+        <span style="position: absolute; left: 0;">
+        <b style="justify-content: left; ">Order #:</b> {{ data['order_id'] }}
+        </span>
+        <span style="position: absolute; right: 0;">
+        <b style="justify-content: left">Table:</b> {{ data['table'].name }}
+        </span>
+            <br>
+        <span style="position: absolute; left: 0;">
+        <b style="justify-content: left">Date #:</b> {{ data['dt'] }}
+        </span>
+        <span style="position: absolute; right: 0;">
+        <b style="justify-content: left">Time:</b> {{ data['time'] }}
+        </span>
+        </p>
+<br>
+  </div>
+  <center>
+        <table class="table" style="font-size: x-small; font-family: Arial; justify-content: center; width: 100%">
+  <thead>
+    <tr>
+      <th scope="col">Item</th>
+      <th scope="col">Rate</th>
+      <th scope="col">Quantity</th>
+      <th scope="col">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for item in data['order'][0] %}
+    <tr style="text-align: center">
+      <td>{{ item[2] }}</td>
+      <td>{{ item[3] }}</td>
+      <td>{{ item[4] }}</td>
+    <td>{{ item[5] }}/-</td>
+    </tr>
+    {% endfor %}
+  <tr>
+      <td style="text-align: center;">
+          <b>Items</b>
+      </td>
+      <td colspan="2">
+
+      </td>
+      <td style="text-align: center">
+        {{ data['order'][-1] }}
+      </td>
+  </tr>
+  <tr>
+      <td style="text-align: center;">
+          <b>CGST (Rs.)</b>
+      </td>
+      <td colspan="2">
+
+      </td>
+      <td style="text-align: center">
+        {{ data['cgst'] }}
+      </td>
+  </tr>
+    <tr>
+      <td style="text-align: center;">
+          <b>SGST (Rs.)</b>
+      </td>
+      <td colspan="2">
+
+      </td>
+      <td style="text-align: center">
+        {{ data['sgst'] }}
+      </td>
+  </tr>
+    <tr>
+      <td style="text-align: center;">
+          <b>Round off (Rs.)</b>
+      </td>
+      <td colspan="2">
+
+      </td>
+      <td style="text-align: center">
+        {{ data['round_off'] }}
+      </td>
+  </tr>
+  <tr>
+      <td style="text-align: center;">
+          <b>Net total (Rs.)</b>
+      </td>
+      <td colspan="2">
+
+      </td>
+      <td style="text-align: center">
+        {{ data['net_total'] }}
+      </td>
+  </tr>
+  </tbody>
+        <hr>
+</table>
+  <span style="font-family: Arial; font-size: x-small;">
+    Thank you and visit again!
+  <hr>
+  </center>
+    </div>
+   </div>
+</section>
+</body>
+</html>

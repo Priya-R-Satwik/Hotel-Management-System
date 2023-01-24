@@ -215,22 +215,26 @@ class archives(db.Model):
 
 class chef_orders(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.String(80))
     order_id = db.Column(db.String(80))
     item = db.Column(db.String(80), db.ForeignKey('items.item_id'), nullable=False)
     quantity = db.Column(db.String(80), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     table_no = db.Column(db.String(120), nullable=False)
     user = db.Column(db.String(120), db.ForeignKey('user_details.id'), nullable=False)
+    sent = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return '<Order %r>' % self.id
 
-    def __init__(self, order_id, item, quantity, table_no, user):
+    def __init__(self, order_id, item, quantity, table_no, user, sent):
         self.order_id = order_id
+        self.request_id = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
         self.item = item
         self.quantity = quantity
         self.table_no = table_no
         self.user = user
+        self.sent = sent
 
     def serialize(self):
         return {
@@ -239,7 +243,8 @@ class chef_orders(db.Model):
             "quantity": self.quantity,
             "date": self.date,
             "table_no": self.table_no,
-            "user": self.user
+            "user": self.user,
+            "sent": self.sent
         }
 
 @app.route('/dashboard', methods=['GET', 'POST'])
@@ -306,12 +311,16 @@ def register():
         phone = ""
         role = args.get('role')
         user = user_details.query.filter_by(username=username).first()
-        if password == confirm_password and user is None:
-            user = user_details(name, surname, username, email, generate_password_hash(password), phone, role)
-            db.session.add(user)
-            db.session.commit()
-            flash('New user created successfully')
-            return redirect(url_for('login'))
+        try:
+            if password == confirm_password and user is None:
+                user = user_details(name, surname, username, email, generate_password_hash(password), phone, role)
+                db.session.add(user)
+                db.session.commit()
+                flash('New user created successfully')
+                return redirect(url_for('login'))
+        except:
+            flash('Error creating new user')
+            return redirect(url_for('register'))
         flash('Invalid credentials')
         return render_template('register.html')
     return render_template('register.html')
@@ -415,12 +424,14 @@ class owner:
                 order = orders.query.filter_by(order_id=order_id).join(items, orders.item == items.item_id).add_columns(orders.id, items.name, items.rate, orders.quantity, orders.total).all()
                 items_list = items.query.all()
                 total_amount = orders.query.filter_by(order_id=order_id).with_entities(func.sum(orders.total)).scalar()
+                unserved_orders = chef_orders.query.filter_by(order_id=order_id, sent=False).join(items, chef_orders.item == items.item_id).add_columns(items.name, chef_orders.quantity).all()
                 data = {
                     'order_id': order_id,
                     'table': table,
                     'order': [order, len(order)],
                     'items_list': items_list,
-                    'total_amount': 0 if total_amount == None else total_amount
+                    'total_amount': 0 if total_amount == None else total_amount,
+                    'unserved_orders': [unserved_orders, len(unserved_orders)]
                 }
                 return render_template('order.html', data=data)
         flash('You are not authorized to view this page')
@@ -438,7 +449,7 @@ class owner:
                 rate = int(items.query.filter_by(item_id=item).first().rate)
                 fetch = orders.query.filter_by(order_id=order_id, item=args.get('item_id')).first()
                 table_no = tables.query.filter_by(order_id=order_id).first().table_id
-                data_to_chef = chef_orders(order_id, item, quantity, table_no, current_user.id)
+                data_to_chef = chef_orders(order_id, item, quantity, table_no, current_user.id, False)
                 if fetch:
                     fetch.quantity = int(fetch.quantity) + int(quantity)
                     fetch.total = int(fetch.quantity) * rate
@@ -459,18 +470,34 @@ class owner:
     @app.route('/order/<order_id>/print', methods=['GET'])
     @login_required
     def print_bill(order_id):
-        if current_user.role in ['1','2']:
-            if request.method == 'GET':
+        if True:
+            chef_data = chef_orders.query.filter_by(order_id=order_id).with_entities(chef_orders.item, func.sum(
+                chef_orders.quantity)).group_by(chef_orders.item).order_by(chef_orders.item).filter(
+                chef_orders.sent == True).all()
+            order_data = orders.query.filter_by(order_id=order_id).with_entities(orders.item,
+                                                                                 func.sum(orders.quantity)).group_by(
+                orders.item).order_by(orders.item).all()
+            if chef_data == order_data:
                 table = tables.query.filter_by(order_id=order_id).first()
-                order = orders.query.filter_by(order_id=order_id).join(items, orders.item == items.item_id).add_columns(orders.id, items.name, items.rate, orders.quantity, orders.total).all()
+                order = orders.query.filter_by(order_id=order_id).join(items, orders.item == items.item_id).add_columns(
+                    orders.id, items.name, items.rate, orders.quantity, orders.total).join(user_details, orders.user == user_details.id).add_columns(user_details.name, user_details.surname).all()
                 total_amount = orders.query.filter_by(order_id=order_id).with_entities(func.sum(orders.total)).scalar()
                 data = {
                     'order_id': order_id,
                     'table': table,
                     'order': [order, len(order)],
-                    'total_amount': 0 if not total_amount else total_amount
+                    'total_amount': 0 if total_amount == None else total_amount,
+                    'cgst': 0 if total_amount == None else total_amount * 0.025,
+                    'sgst': 0 if total_amount == None else total_amount * 0.025,
+                    'round_off': 0 if total_amount == None else total_amount + total_amount * 0.05 - round(total_amount + total_amount * 0.05),
+                    'net_total': 0 if total_amount == None else round(total_amount + total_amount * 0.05),
+                    'dt': datetime.now().strftime("%d %b %Y"),
+                    'time': datetime.now().strftime("%I:%M:%S")
                 }
-                return render_template('test.html', data=data)
+                return render_template('print.html', data=data)
+            else:
+                flash(str([chef_data, order_data]))
+                return redirect(url_for('order', order_id=order_id))
         flash('You are not authorized to view this page')
         return redirect(url_for('dashboard'))
 
@@ -497,7 +524,7 @@ class owner:
             order = orders.query.filter_by(id=order_item_id).first()
             order.quantity = int(order.quantity) + 1
             order.total = int(order.total) + int(items.query.filter_by(item_id=order.item).first().rate)
-            chef = chef_orders(order_id, order.item, 1, order.table_no, current_user.id)
+            chef = chef_orders(order_id, order.item, 1, order.table_no, current_user.id, False)
             db.session.add(chef)
             db.session.commit()
             flash('Quantity added successfully')
@@ -556,31 +583,38 @@ class owner:
     @login_required
     def confirm_order(order_id):
         if current_user.role == '1':
-            order = orders.query.filter_by(order_id=order_id).all()
-            invoice_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=15))
-            for i in order:
-                invoice = invoices(
-                    invoice_id=invoice_id,
-                    item = i.item,
-                    quantity = i.quantity,
-                    total = i.total,
-                    date = i.date,
-                    table_no = i.table_no,
-                    user = i.user
-                )
-                db.session.add(invoice)
-            table = tables.query.filter_by(order_id=order_id).first()
-            table.status = 0
-            table.order_id = None
-            table.user = None
-            for i in order:
-                db.session.delete(i)
-            chef = chef_orders.query.filter_by(order_id=order_id).all()
-            for i in chef:
-                db.session.delete(i)
-            db.session.commit()
-            flash('Order confirmed successfully')
-            return redirect(url_for('owner_dashboard'))
+            chef_data = chef_orders.query.filter_by(order_id=order_id).with_entities(chef_orders.item, func.sum(chef_orders.quantity)).group_by(chef_orders.item).order_by(chef_orders.item).filter(chef_orders.sent == True).all()
+            order_data = orders.query.filter_by(order_id=order_id).with_entities(orders.item, func.sum(orders.quantity)).group_by(orders.item).order_by(orders.item).all()
+            if chef_data == order_data:
+                order = orders.query.filter_by(order_id=order_id).all()
+                invoice_id = order[0].order_id
+                for i in order:
+                    invoice = invoices(
+                        invoice_id=invoice_id,
+                        item = i.item,
+                        quantity = i.quantity,
+                        total = i.total,
+                        date = i.date,
+                        table_no = i.table_no,
+                        user = i.user
+                    )
+                    db.session.add(invoice)
+                table = tables.query.filter_by(order_id=order_id).first()
+                table.status = 0
+                table.order_id = None
+                table.user = None
+                for i in order:
+                    db.session.delete(i)
+                chef = chef_orders.query.filter_by(order_id=order_id).all()
+                for i in chef:
+                    db.session.delete(i)
+                db.session.commit()
+                flash('Order confirmed successfully')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Order not confirmed. Please check the order and try again')
+                return redirect(url_for('order', order_id=order_id))
+            return render_template('test.html', data=[chef_data, order_data])
         flash('You are not authorized to view this page')
         return redirect(url_for('logout'))
 
@@ -597,7 +631,6 @@ class owner:
                 host = user_details.query.filter_by(id=invoice[0].user).first()
                 invoice_data[i[0]] = [date, total_amount, host.name + ' ' + host.surname, invoice[0].table_no]
                 for j in invoice:
-                    host = tables.query.filter_by(table_id=j.table_no).first()
                     invoice_data[i[0]].append({
                         'item': items.query.filter_by(item_id=j.item).first().name,
                         'quantity': j.quantity,
@@ -700,11 +733,24 @@ class chef:
     @login_required
     def chef_dashboard():
         if current_user.role == '3':
-            chef = chef_orders.query.join(items, chef_orders.item == items.item_id).add_columns(items.name, chef_orders.quantity, chef_orders.order_id, chef_orders.table_no).all()
+            chef = chef_orders.query.join(items, chef_orders.item == items.item_id).add_columns(items.name, chef_orders.quantity, chef_orders.order_id, chef_orders.table_no).join(user_details, chef_orders.user == user_details.id).add_columns(user_details.name, user_details.surname).order_by(chef_orders.date.desc()).all()
             data = {
-                'chef': chef
+                'chef': chef,
+                'str': lambda x: str(x)
             }
             return render_template('chef_dashboard.html', data=data)
+        flash('You are not authorized to view this page')
+        return redirect(url_for('logout'))
+
+    @app.route('/chef_dashboard/confirm/<request_id>', methods=['GET'])
+    @login_required
+    def chef_confirm(request_id):
+        if current_user.role == '3':
+            order = chef_orders.query.filter_by(request_id=request_id).first()
+            order.sent = True
+            db.session.commit()
+            flash('Order confirmed')
+            return redirect(url_for('chef_dashboard'))
         flash('You are not authorized to view this page')
         return redirect(url_for('logout'))
 
