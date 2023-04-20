@@ -44,12 +44,6 @@
                     <input class="form-control" name="rate" type="text" onfocus="focused(this)" onfocusout="defocused(this)" required>
                   </div>
                 </div>
-        <div class="col-md-12">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Category</label>
-                    <input class="form-control" name="category" type="text" onfocus="focused(this)" onfocusout="defocused(this)">
-                  </div>
-                </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -80,7 +74,6 @@
                             <div class="d-flex px-2 py-1">
                               <div class="d-flex flex-column justify-content-center">
                                 <h6 class="mb-0 text-sm">{{ item.name }}</h6>
-                                <p class="text-xs text-secondary mb-0">Category: {{ item.category }}</p>
                               </div>
                             </div>
                           </td>
@@ -113,12 +106,6 @@
                                                       <div class="form-group">
                                                         <label for="example-text-input" class="form-control-label">Rate</label>
                                                         <input class="form-control" value="{{ item.rate }}" name="rate" type="text" onfocus="focused(this)" onfocusout="defocused(this)" required>
-                                                      </div>
-                                                    </div>
-                                            <div class="col-md-12">
-                                                      <div class="form-group">
-                                                        <label for="example-text-input" class="form-control-label">Category</label>
-                                                        <input class="form-control" value="{{ item.category }}" name="category" type="text" onfocus="focused(this)" onfocusout="defocused(this)">
                                                       </div>
                                                     </div>
                                           </div>

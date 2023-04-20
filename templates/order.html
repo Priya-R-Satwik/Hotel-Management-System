@@ -1,181 +1,268 @@
-{% extends 'base.html' %}
-
-{% block title %}Order {{ data['order_id'] }}{% endblock %}
-
-{% block dashboard %}active{% endblock %}
-
-{% block role %}owner{% endblock %}
-
-{% block content %}
-   <div class="card shadow-lg mx-4 ">
-      <div class="card-body p-3">
-        <div class="row gx-4">
-          <div class="col-auto my-auto">
-            <div class="h-100">
-              <h5 class="mb-1">
-                Order ID : {{ data['order_id'] }}
-              </h5>
-              <p class="mb-0 font-weight-bold text-sm">
-                {{ data['table'].name }}
-              </p>
-              <p class="mb-0 font-weight-bold text-sm">
-                Hosted By: V2-{{ data['table'].user }}
-              </p><br>
-              <p class="mb-0 font-weight-bold text-sm">
-                <a href="/order/{{ data['order_id'] }}/confirm" type="button" class="btn bg-gradient-success mb-0">
-                    Confirm Order
-                </a>
-                  <a href="/order/{{ data['order_id'] }}/print" type="button" class="btn bg-gradient-primary mb-0" target="_blank">
-                    Print
-                </a>
-              </p>
-            </div>
-          </div>
+{% extends 'base.html' %} {% block title %}Order {{ data['order_id'] }}{%
+endblock %} {% block dashboard %}active{% endblock %} {% block role %}owner{%
+endblock %} {% block content %}
+<div class="card shadow-lg mx-4">
+  <div class="card-body p-3">
+    <div class="row gx-4">
+      <div class="col-auto my-auto">
+        <div class="h-100">
+          <h5 class="mb-1">Order ID : {{ data['order_id'] }}</h5>
+          <p class="mb-0 font-weight-bold text-sm">{{ data['table'].name }}</p>
+          <p class="mb-0 font-weight-bold text-sm">
+            Hosted By: V2-{{ data['table'].user }}
+          </p>
+          <br />
+          <p class="mb-0 font-weight-bold text-sm">
+            <a
+              href="/order/{{ data['order_id'] }}/confirm"
+              type="button"
+              class="btn bg-gradient-success mb-0"
+            >
+              Confirm Order
+            </a>
+            <a
+              href="/order/{{ data['order_id'] }}/print"
+              type="button"
+              class="btn bg-gradient-primary mb-0"
+              target="_blank"
+            >
+              Print
+            </a>
+          </p>
         </div>
       </div>
     </div>
-<br>
-    <div class="card shadow-lg mx-4 ">
-      <div class="card-body p-3">
-        <div class="row gx-4">
-          <div class="col-auto my-auto">
-            <div class="h-100">
-                <h5 class="mb-1">
-                Unserved orders
-              </h5>
-            <ul class="list-group">
-             {% for order in data['unserved_orders'][0] %}
-              <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
-                  <div class="d-flex flex-column">
-                  <h6 class="mb-3 text-sm">{{ order[1] }}</h6>
-                  <span class="mb-2 text-xs">Quantity: <span class="text-dark ms-sm-2 font-weight-bold">{{ order[2] }}</span></span>
-                  </div>
-              </li>
-              {% endfor %}
-            </ul>
-            </div>
-          </div>
+  </div>
+</div>
+<br />
+<div class="card shadow-lg mx-4">
+  <div class="card-body p-3">
+    <div class="row gx-4">
+      <div class="col-auto my-auto">
+        <div class="h-100">
+          <h5 class="mb-1">Unserved orders</h5>
+          <ul class="list-group">
+            {% for order in data['unserved_orders'][0] %}
+            <li
+              class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg"
+            >
+              <div class="d-flex flex-column">
+                <h6 class="mb-3 text-sm">{{ order[1] }}</h6>
+                <span class="mb-2 text-xs"
+                  >Quantity:
+                  <span class="text-dark ms-sm-2 font-weight-bold"
+                    >{{ order[2] }}</span
+                  ></span
+                >
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
         </div>
       </div>
     </div>
+  </div>
+</div>
 <div class="container-fluid py-4">
-   <div class="row">
-        <div class="col-md-7 mt-4">
-          <div class="card">
-            <div class="card-header pb-0 p-3">
-                  <div class="row">
-                    <div class="col-6 d-flex align-items-center">
-                      <h6 class="mb-0">Items</h6>
-                    </div>
-                    <div class="col-6 text-end">
-                        <button type="button" class="btn bg-gradient-dark mb-0" data-bs-toggle="modal" data-bs-target="#exampleModal">
-                          Add Item
-                        </button>
-                        <a class="btn bg-gradient-danger mb-0" href="/order/{{ data['order_id'] }}/delete_order">
-                          Delete order
-                        </a>
-
-                        <!-- Modal -->
-                        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                          <div class="modal-dialog">
-                            <div class="modal-content">
-                              <div class="modal-header">
-                                <h5 class="modal-title" id="exampleModalLabel">Items</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                              </div>
-                            <form method="POST" action="/order/{{ data['order_id'] }}/add_item">
-                              <div class="modal-body">
-                                 <select name="item_id" placeholder="Select Item">
-                                    <option value="" disabled>Select Item</option>
-                                    {% for item in data['items_list'] %}
-                                    <option value="{{ item.item_id }}">{{ item.name }}</option>
-                                    {% endfor %}
-                                  </select>
-                              <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Address</label>
-                    <input type="number" class="form-control" name="quantity" min='1' type="text" onfocus="focused(this)" onfocusout="defocused(this)" required>
-                  </div>
-                              </div>
-                              <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button type="submit" class="btn btn-primary">Save changes</button>
-                              </div>
-                            </form>
-                            </div>
-                          </div>
-                        </div>
-                    </div>
-                  </div>
-                </div>
-            <div class="card-body pt-4 p-3">
-              <ul class="list-group">
-                {% if data['order'][1] > 0 %}
-                    {% for item in data['order'][0] %}
-                        <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
-                      <div class="d-flex flex-column">
-                        <h6 class="mb-3 text-sm">{{ item.name }}</h6>
-                        <span class="mb-2 text-xs">Rate: <span class="text-dark font-weight-bold ms-sm-2">{{ item.rate }}</span></span>
-                        <span class="mb-2 text-xs">Quantity: <span class="text-dark ms-sm-2 font-weight-bold">{{ item.quantity }}</span></span>
-                          <a class="btn btn-link text-danger text-gradient px-3 mb-0" href="/order/{{ data['order_id'] }}/delete_item/{{ item.id }}"><i class="far fa-trash-alt me-2"></i>Delete</a>
-                      </div>
-                      <div class="ms-auto text-end">
-                          <a class="btn bg-gradient-warning mb-0" href="/order/{{ data['order_id'] }}/subtract_quantity/{{ item.id }}">-</a>
-                        <a class="btn bg-gradient-success mb-0" href="/order/{{ data['order_id'] }}/add_quantity/{{ item.id }}">+</a>
-                      </div>
-                    </li>
-                    {% endfor %}
-                {% else %}
-                    <li class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg">
-                      <div class="text-center d-flex flex-column">
-                        <h6 class="mb-3 text-sm">No orders recieved yet</h6>
-                      </div>
-                    </li>
-                {% endif %}
-              </ul>
+  <div class="row">
+    <div class="col-md-7 mt-4">
+      <div class="card">
+        <div class="card-header pb-0 p-3">
+          <div class="row">
+            <div class="col-6 d-flex align-items-center">
+              <h6 class="mb-0">Items</h6>
             </div>
-          </div>
-        </div>
-        <div class="col-md-5 mt-4">
-          <div class="card h-100 mb-4">
-            <div class="card-header pb-0 px-3">
-              <div class="row">
-                <div class="col-md-6">
-                  <h6 class="mb-0">Bill</h6>
+            <div class="col-6 text-end">
+              <button
+                type="button"
+                class="btn bg-gradient-dark mb-0"
+                data-bs-toggle="modal"
+                data-bs-target="#exampleModal"
+              >
+                Add Item
+              </button>
+              <a
+                class="btn bg-gradient-danger mb-0"
+                href="/order/{{ data['order_id'] }}/delete_order"
+              >
+                Delete order
+              </a>
+
+              <!-- Modal -->
+              <div
+                class="modal fade"
+                id="exampleModal"
+                tabindex="-1"
+                aria-labelledby="exampleModalLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="exampleModalLabel">Items</h5>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                      ></button>
+                    </div>
+                    <form
+                      method="POST"
+                      action="/order/{{ data['order_id'] }}/add_item"
+                    >
+                      <div class="modal-body">
+                        <select name="item_id" placeholder="Select Item">
+                          <option value="" disabled>Select Item</option>
+                          {% for item in data['items_list'] %}
+                          <option value="{{ item.item_id }}">
+                            {{ item.name }}
+                          </option>
+                          {% endfor %}
+                        </select>
+                        <div class="form-group">
+                          <label
+                            for="example-text-input"
+                            class="form-control-label"
+                            >Quantity</label
+                          >
+                          <input
+                            type="number"
+                            class="form-control"
+                            name="quantity"
+                            min="1"
+                            type="text"
+                            onfocus="focused(this)"
+                            onfocusout="defocused(this)"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button
+                          type="button"
+                          class="btn btn-secondary"
+                          data-bs-dismiss="modal"
+                        >
+                          Close
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                          Save changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="card-body pt-4 p-3">
-              <ul class="list-group">
-                  {% if data['order'][1] > 0 %}
-                    {% for item in data['order'][0] %}
-                  <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex align-items-center">
-                    <div class="d-flex flex-column">
-                      <h6 class="mb-1 text-dark text-sm">{{ item.name }}</h6>
-                        <span class="text-xs"><strong>Rate:</strong> {{ item.rate }}<br><strong>Quantity:</strong> {{ item.quantity }}</span>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center text-dark text-gradient text-sm font-weight-bold">
-                    ₹ {{  item.total }}
-                  </div>
-                </li>
-                    {% endfor %}
-                {% endif %}
-              <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
-                  <div class="d-flex align-items-center">
-                    <div class="d-flex flex-column">
-                      <h6 class="mb-1 text-dark text-sm">Total amount</h6>
-                        <span class="text-xs"></span>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center text-dark text-gradient text-sm font-weight-bold">
-                      <span class="mb-1 text-danger text-sm">₹ {{ data['total_amount'] }}</span>
-                  </div>
-                </li>
-              </ul>
+          </div>
+        </div>
+        <div class="card-body pt-4 p-3">
+          <ul class="list-group">
+            {% if data['order'][1] > 0 %} {% for item in data['order'][0] %}
+            <li
+              class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg"
+            >
+              <div class="d-flex flex-column">
+                <h6 class="mb-3 text-sm">{{ item.name }}</h6>
+                <span class="mb-2 text-xs"
+                  >Rate:
+                  <span class="text-dark font-weight-bold ms-sm-2"
+                    >{{ item.rate }}</span
+                  ></span
+                >
+                <span class="mb-2 text-xs"
+                  >Quantity:
+                  <span class="text-dark ms-sm-2 font-weight-bold"
+                    >{{ item.quantity }}</span
+                  ></span
+                >
+                <a
+                  class="btn btn-link text-danger text-gradient px-3 mb-0"
+                  href="/order/{{ data['order_id'] }}/delete_item/{{ item.id }}"
+                  ><i class="far fa-trash-alt me-2"></i>Delete</a
+                >
+              </div>
+              <div class="ms-auto text-end">
+                <a
+                  class="btn bg-gradient-warning mb-0"
+                  href="/order/{{ data['order_id'] }}/subtract_quantity/{{ item.id }}"
+                  >-</a
+                >
+                <a
+                  class="btn bg-gradient-success mb-0"
+                  href="/order/{{ data['order_id'] }}/add_quantity/{{ item.id }}"
+                  >+</a
+                >
+              </div>
+            </li>
+            {% endfor %} {% else %}
+            <li
+              class="list-group-item border-0 d-flex p-4 mb-2 bg-gray-100 border-radius-lg"
+            >
+              <div class="text-center d-flex flex-column">
+                <h6 class="mb-3 text-sm">No orders recieved yet</h6>
+              </div>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5 mt-4">
+      <div class="card h-100 mb-4">
+        <div class="card-header pb-0 px-3">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="mb-0">Bill</h6>
             </div>
           </div>
         </div>
+        <div class="card-body pt-4 p-3">
+          <ul class="list-group">
+            {% if data['order'][1] > 0 %} {% for item in data['order'][0] %}
+            <li
+              class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg"
+            >
+              <div class="d-flex align-items-center">
+                <div class="d-flex flex-column">
+                  <h6 class="mb-1 text-dark text-sm">{{ item.name }}</h6>
+                  <span class="text-xs"
+                    ><strong>Rate:</strong> {{ item.rate }}<br /><strong
+                      >Quantity:</strong
+                    >
+                    {{ item.quantity }}</span
+                  >
+                </div>
+              </div>
+              <div
+                class="d-flex align-items-center text-dark text-gradient text-sm font-weight-bold"
+              >
+                ₹ {{ item.total }}
+              </div>
+            </li>
+            {% endfor %} {% endif %}
+            <li
+              class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg"
+            >
+              <div class="d-flex align-items-center">
+                <div class="d-flex flex-column">
+                  <h6 class="mb-1 text-dark text-sm">Total amount</h6>
+                  <span class="text-xs"></span>
+                </div>
+              </div>
+              <div
+                class="d-flex align-items-center text-dark text-gradient text-sm font-weight-bold"
+              >
+                <span class="mb-1 text-danger text-sm"
+                  >₹ {{ data['total_amount'] }}</span
+                >
+              </div>
+            </li>
+          </ul>
+        </div>
       </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
